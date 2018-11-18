@@ -1,10 +1,11 @@
 package handler
 
 import (
+	"fmt"
+	"goDockApp/config"
 	"goDockApp/core"
 	"goDockApp/database"
 	"goDockApp/model"
-	"goDockApp/util"
 	"net/http"
 	"regexp"
 	"time"
@@ -16,11 +17,6 @@ import (
 )
 
 var logger = logrus.WithField("package", "handler")
-
-const (
-	// Key (Should come from somewhere else).
-	Key = "secret"
-)
 
 type H map[string]interface{}
 
@@ -35,6 +31,52 @@ func isValidTreeData(data string) bool {
 
 func errorMsg(err string) map[string]interface{} {
 	return map[string]interface{}{"error": err}
+}
+
+// RenderSignUpPage ...
+func RenderSignUpPage(c echo.Context) error {
+	if isUserLogin(c) {
+		return c.Redirect(http.StatusFound, "/")
+	}
+	return c.Render(http.StatusOK, "signup.html", map[string]interface{}{})
+}
+
+// RenderLoginPage ...
+func RenderLoginPage(c echo.Context) error {
+	if isUserLogin(c) {
+		return c.Redirect(http.StatusFound, "/")
+	}
+	return c.Render(http.StatusOK, "login.html", map[string]interface{}{})
+}
+
+func isUserLogin(c echo.Context) bool {
+	authCookie, err := c.Cookie(config.AuthTokenName)
+	if err != nil || authCookie == nil {
+		logger.Errorf(err.Error())
+		return false
+	}
+	token, err := jwt.Parse(authCookie.Value, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("There was an error")
+		}
+		return []byte("secret"), nil
+	})
+	if err != nil {
+		logger.Errorf(err.Error())
+		return false
+	}
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return true
+	}
+	return false
+}
+
+// IndexHandler sends user to login page if he failed the jwt authentication
+func IndexHandler(c echo.Context) error {
+	if !isUserLogin(c) {
+		return c.Redirect(http.StatusFound, "/login")
+	}
+	return c.Render(http.StatusOK, "index.html", map[string]interface{}{})
 }
 
 // TreeHandler returns max sum of the longest path
@@ -57,10 +99,13 @@ func TreeHandler(c echo.Context) error {
 // LoginHandler handles user's login
 // returns error when user does not exist or login info is invalid
 func LoginHandler(c echo.Context) error {
+	if isUserLogin(c) {
+		return c.Redirect(http.StatusFound, "/")
+	}
 	resp := &model.LoginResponse{}
 	user := &model.User{}
 	if err := c.Bind(user); err != nil {
-		logrus.Error(err)
+		logger.Error(err)
 		resp.Error = err.Error()
 		return c.Render(http.StatusOK, "login.html", resp)
 	}
@@ -70,7 +115,7 @@ func LoginHandler(c echo.Context) error {
 
 	// Validate
 	if !inValidCredentials(user.Email, user.Password) || !database.IsUserExists(user) {
-		resp.Error = util.InValidCredentialsMsg
+		resp.Error = config.InValidCredentialsMsg
 		logger.Errorf(resp.Error)
 		return c.Render(http.StatusOK, "login.html", resp)
 	}
@@ -80,17 +125,30 @@ func LoginHandler(c echo.Context) error {
 
 	// Set claims
 	claims := token.Claims.(jwt.MapClaims)
-	claims["id"] = user.ID
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
 
-	// Generate encoded token and send it as response
-	user.Token, _ = token.SignedString([]byte(Key))
-	return c.Redirect(http.StatusSeeOther, "/index")
+	// Generate encoded token and set it in the cookie
+	user.Token, _ = token.SignedString([]byte(config.Key))
+	user.Password = ""
+
+	cookie := &http.Cookie{
+		Name:     config.AuthTokenName,
+		Value:    user.Token,
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   config.SevenDaysInSeconds,
+		Expires:  time.Now().Add(time.Duration(config.SevenDaysInSeconds) * time.Second),
+	}
+	c.SetCookie(cookie)
+	return c.Redirect(http.StatusSeeOther, "/")
 }
 
 // SignUpHandler creates a new user when credentials are valid
 // returns error if error happens
 func SignUpHandler(c echo.Context) error {
+	if isUserLogin(c) {
+		return c.Redirect(http.StatusFound, "/")
+	}
 	user := &model.User{}
 	resp := &model.LoginResponse{}
 	if err := c.Bind(user); err != nil {
@@ -104,7 +162,7 @@ func SignUpHandler(c echo.Context) error {
 
 	// Validate
 	if !inValidCredentials(user.Email, user.Password) {
-		resp.Error = util.InValidCredentialsMsg
+		resp.Error = config.InValidCredentialsMsg
 		logger.Error(resp.Error)
 		return c.Render(http.StatusOK, "signup.html", resp)
 	}
@@ -116,5 +174,6 @@ func SignUpHandler(c echo.Context) error {
 		return c.Render(http.StatusOK, "signup.html", resp)
 	}
 
-	return c.Redirect(http.StatusSeeOther, "/index")
+	user.Password = ""
+	return c.Redirect(http.StatusSeeOther, "/")
 }

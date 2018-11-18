@@ -68,12 +68,14 @@ func main() {
 	// Routes
 	e.POST("/login", handler.LoginHandler)
 	e.POST("/signup", handler.SignUpHandler)
-	e.POST("/api/v1/tree", handler.TreeHandler)
+	e.GET("/", handler.IndexHandler)
 
 	// Templates
-	e.GET("/index", handler.RenderIndexPage)
 	e.GET("/signup", handler.RenderSignUpPage)
 	e.GET("/login", handler.RenderLoginPage)
+
+	// API
+	e.POST("/api/v1/tree", handler.TreeHandler)
 
 	// Start server
 	e.Logger.Fatal(e.Start(serverPort))

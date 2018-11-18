@@ -2,8 +2,8 @@ package database
 
 import (
 	"errors"
+	"goDockApp/config"
 	"goDockApp/model"
-	"goDockApp/util"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -14,7 +14,7 @@ func CreateUser(user *model.User) error {
 	// Encrypt
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), 12)
 	if err != nil {
-		return errors.New(util.InValidCredentialsMsg)
+		return errors.New(config.InValidCredentialsMsg)
 	}
 
 	// Save
@@ -22,7 +22,7 @@ func CreateUser(user *model.User) error {
 	DB.QueryRow("INSERT INTO users(email,password) VALUES($1,$2) returning id;",
 		user.Email, hashedPassword).Scan(&lastInsertId)
 	if lastInsertId == 0 {
-		return errors.New(util.AlreadyExistsMsg)
+		return errors.New(config.AlreadyExistsMsg)
 	}
 	return nil
 }
