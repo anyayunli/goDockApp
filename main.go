@@ -2,31 +2,25 @@ package main
 
 import (
 	"goDockApp/database"
-	"goDockApp/model"
-	"goDockApp/util"
+	"goDockApp/handler"
 	"html/template"
 	"io"
 	"net/http"
-	"regexp"
-	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var logger = logrus.WithField("package", "main")
 
-// TemplateRenderer is a custom html/template renderer for Echo framework
+// TemplateRenderer is a custom html/template renderer
 type TemplateRenderer struct {
 	templates *template.Template
 }
 
 // Render renders a template document
 func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-
 	// Add global methods if data is a map
 	if viewContext, isMap := data.(map[string]interface{}); isMap {
 		viewContext["reverse"] = c.Echo().Reverse
@@ -64,114 +58,20 @@ func main() {
 
 	// CORS
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:3000"},
+		AllowOrigins: []string{},
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
 
 	// Routes
-	e.POST("/login", loginHandler)
-	e.GET("/login", func(c echo.Context) error {
-		return c.Render(http.StatusOK, "login.html", map[string]interface{}{
-			"name": "Dolly!",
-		})
-	})
-	e.POST("/signup", signUpHandler)
-	e.GET("/signup", func(c echo.Context) error {
-		return c.Render(http.StatusOK, "signup.html", map[string]interface{}{
-			"name": "Dolly!",
-		})
-	})
+	e.POST("/login", handler.LoginHandler)
+	e.POST("/signup", handler.SignUpHandler)
+	e.POST("/api/v1/tree", handler.TreeHandler)
 
-	e.GET("/index", indexHandler)
-	e.POST("/api/v1/tree", treeHandler)
+	// Templates
+	e.GET("/index", handler.RenderIndexPage)
+	e.GET("/signup", handler.RenderSignUpPage)
+	e.GET("/login", handler.RenderLoginPage)
 
 	// Start server
 	e.Logger.Fatal(e.Start(serverPort))
-}
-
-func treeHandler(c echo.Context) error {
-	tree := &model.TreeSerialized{}
-	if err := c.Bind(tree); err != nil {
-		return err
-	}
-	isValid := regexp.MustCompile(`^[0-9#,]+$`).MatchString
-	if !isValid(tree.Data) {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid Tree!"})
-	}
-	tree.Max = util.GetMaxSum(tree.Data)
-	return c.JSON(http.StatusOK, tree)
-}
-
-func indexHandler(c echo.Context) error {
-	return c.Render(http.StatusOK, "index.html", map[string]interface{}{})
-}
-
-func renderIndexPage(data map[string]interface{}, c echo.Context) error {
-	return c.Render(http.StatusOK, "index.html", data)
-}
-
-const (
-	// Key (Should come from somewhere else).
-	Key = "secret"
-)
-
-func loginHandler(c echo.Context) error {
-	// return c.Render(http.StatusOK, "something.html", map[string]interface{}{
-	// 	"name": "Dolly!",
-	// })
-	user := &model.User{}
-	if err := c.Bind(user); err != nil {
-		return err
-	}
-
-	// Validate
-	if user.Email == "" || user.Password == "" {
-		return c.JSON(http.StatusBadRequest, "invalid email or password")
-	}
-
-	var dbPassword string
-	err := database.DB.QueryRow("select password from users where email=$1", user.Email).Scan(&dbPassword)
-	if err != nil {
-		return c.JSON(http.StatusUnauthorized, "invalid email or password")
-	}
-	if err := bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(user.Password)); err != nil {
-		return c.JSON(http.StatusUnauthorized, "invalid email or password")
-	}
-
-	// Create token
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	// Set claims
-	claims := token.Claims.(jwt.MapClaims)
-	claims["id"] = user.ID
-	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
-
-	// Generate encoded token and send it as response
-	user.Token, _ = token.SignedString([]byte(Key))
-	return c.Redirect(http.StatusSeeOther, "/index")
-}
-
-func signUpHandler(c echo.Context) error {
-	// Bind
-	user := &model.User{}
-	if err := c.Bind(user); err != nil {
-		return err
-	}
-
-	// Validate
-	if user.Email == "" || user.Password == "" {
-		return c.JSON(http.StatusBadRequest, "invalid email or password")
-	}
-
-	// Encrypt
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), 12)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, "bad password")
-	}
-
-	// Save user
-	var lastInsertId int
-	database.DB.QueryRow("INSERT INTO users(email,password) VALUES($1,$2) returning id;",
-		user.Email, hashedPassword).Scan(&lastInsertId)
-	return c.Redirect(http.StatusSeeOther, "/index")
 }

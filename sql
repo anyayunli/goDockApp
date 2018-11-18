@@ -11,3 +11,5 @@ CREATE DATABASE goDockApp;
 GRANT ALL PRIVILEGES ON DATABASE goDockApp TO api_rw;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO api_rw;
 GRANT ALL PRIVILEGES ON ALL sequences IN SCHEMA public TO api_rw;
+
+CREATE INDEX user_email ON users USING btree (email);
