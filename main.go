@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"regexp"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -92,6 +93,10 @@ func treeHandler(c echo.Context) error {
 	tree := &model.TreeSerialized{}
 	if err := c.Bind(tree); err != nil {
 		return err
+	}
+	isValid := regexp.MustCompile(`^[0-9#,]+$`).MatchString
+	if !isValid(tree.Data) {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid Tree!"})
 	}
 	tree.Max = util.GetMaxSum(tree.Data)
 	return c.JSON(http.StatusOK, tree)

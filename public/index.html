@@ -17,6 +17,12 @@
             margin-bottom: 5%;
             color: black;
         }
+        #toast-container {
+            top: 5%;
+            right: 5%;
+            bottom: auto !important;
+            left:auto !important;
+        }
     </style>
     <header>
         <nav>
@@ -86,12 +92,18 @@
                     'Content-Type': 'application/json'
                 }
             })
-            .then(res => res.json())
-            .then(response => {
-                document.getElementById("maxsum").innerHTML = response.max;
+            .then(res => {
+                if (res.status >= 400 && res.status < 600) {
+                    return res.json().then(Promise.reject.bind(Promise));
+                }
+                return Promise.resolve(res.json());
             })
-            .catch(error => {
-                console.error('Error:', error)
+            .then(res => {
+                document.getElementById("maxsum").innerHTML = res.max;
+            })
+           .catch(error => {
+                M.toast({html: error.error, displayLength: 600})
+                console.log(error);
             });
         };
     </script>
