@@ -35,6 +35,9 @@ func getDBPassword(user *model.User) string {
 
 // IsUserExists checks if a user exist
 func IsUserExists(user *model.User) bool {
+	if len(user.Email) == 0 {
+		return false
+	}
 	dbPassword := getDBPassword(user)
 	if err := bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(user.Password)); err != nil {
 		return false

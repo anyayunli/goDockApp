@@ -39,10 +39,13 @@ func Test_CreateUser(t *testing.T) {
 }
 
 func Test_IsUserExists(t *testing.T) {
+	user0 := model.User{}
 	user1 := model.User{Email: "a1@gmail.com", Password: "132352523"}
 	user2 := model.User{Email: "a1@gmail.com", Password: "111111111"}
 	user3 := model.User{Email: "a3@gmail.com", Password: "132352523"}
+	CreateUser(&user0)
 	CreateUser(&user1)
+	assert.False(t, IsUserExists(&user0))
 	assert.True(t, IsUserExists(&user1))
 	assert.False(t, IsUserExists(&user2))
 	assert.False(t, IsUserExists(&user3))

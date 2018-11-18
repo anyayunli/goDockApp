@@ -7,7 +7,9 @@ services:
     image: postgres
     restart: always
     environment:
-      POSTGRES_PASSWORD: example
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: api_rw
+      POSTGRES_DB: godockapp
 
   adminer:
     image: go-dock-app

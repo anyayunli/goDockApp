@@ -85,7 +85,7 @@ func GetMaxSum(data string) (int64, error) {
 	paths := &[][]int{}
 	max := 0
 	getLongestPaths(root, []int{}, &max, paths)
-	logger.Infof("longest paths: %v", paths)
+	// logger.Infof("longest paths: %v", paths)
 
 	maxsum := math.MinInt64
 	for _, path := range *paths {
