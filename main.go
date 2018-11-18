@@ -48,7 +48,7 @@ func main() {
 	database.InitPgDb(db)
 
 	// Echo instance
-	serverPort := ":2819"
+	serverPort := ":3344"
 	e := echo.New()
 	e.HideBanner = true
 	renderer := &TemplateRenderer{
@@ -68,7 +68,6 @@ func main() {
 	}))
 
 	// Routes
-	e.POST("/maxsum", getMaxSumHandler)
 	e.POST("/login", loginHandler)
 	e.GET("/login", func(c echo.Context) error {
 		return c.Render(http.StatusOK, "login.html", map[string]interface{}{
@@ -82,20 +81,28 @@ func main() {
 		})
 	})
 
-	e.GET("/index", func(c echo.Context) error {
-		return c.Render(http.StatusOK, "index.html", map[string]interface{}{
-			"name": "Dolly!",
-		})
-	})
+	e.GET("/index", indexHandler)
+	e.POST("/api/v1/tree", treeHandler)
 
 	// Start server
 	e.Logger.Fatal(e.Start(serverPort))
 }
 
-func getMaxSumHandler(c echo.Context) error {
-	data := c.Request().PostFormValue("data")
-	max := util.GetMaxSum(data)
-	return c.JSON(http.StatusOK, max)
+func treeHandler(c echo.Context) error {
+	tree := &model.TreeSerialized{}
+	if err := c.Bind(tree); err != nil {
+		return err
+	}
+	tree.Max = util.GetMaxSum(tree.Data)
+	return c.JSON(http.StatusOK, tree)
+}
+
+func indexHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "index.html", map[string]interface{}{})
+}
+
+func renderIndexPage(data map[string]interface{}, c echo.Context) error {
+	return c.Render(http.StatusOK, "index.html", data)
 }
 
 const (
