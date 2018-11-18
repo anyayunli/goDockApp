@@ -3,6 +3,7 @@ package main
 import (
 	"goDockApp/database"
 	"goDockApp/handler"
+	"goDockApp/util"
 	"html/template"
 	"io"
 	"net/http"
@@ -38,6 +39,8 @@ func main() {
 	dbName := "godockapp"
 	dbPassword := ""
 
+	logrus.SetFormatter(util.LogFormatter{})
+
 	db := database.GetDB(dbType, dbHost, dbPort, dbUser, dbName, dbPassword)
 	defer db.Close()
 	database.InitPgDb(db)
@@ -45,6 +48,7 @@ func main() {
 	// Echo instance
 	serverPort := ":3344"
 	e := echo.New()
+	e.Debug = true
 	e.HideBanner = true
 	renderer := &TemplateRenderer{
 		templates: template.Must(template.ParseGlob("public/*.html")),
@@ -53,7 +57,6 @@ func main() {
 	logger.Infof("Start web server on http://localhost%s", serverPort)
 
 	// Middleware
-	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
 	// CORS

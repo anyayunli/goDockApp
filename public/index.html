@@ -58,7 +58,7 @@
                 </div>
                 <div class="row">
                     <div class="input-field col s12">
-                        <textarea id="data" name="data" class="materialize-textarea">{{ .data }}</textarea>
+                        <textarea id="data" name="data" class="materialize-textarea" maxlength="5120">{{ .data }}</textarea>
                         <label for="data">Enter your binary tree</label>
                     </div>
                 </div>
@@ -103,6 +103,7 @@
             })
            .catch(error => {
                 M.toast({html: error.error, displayLength: 600})
+                document.getElementById("maxsum").innerHTML = ""
                 console.log(error);
             });
         };

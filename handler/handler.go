@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"goDockApp/core"
 	"goDockApp/database"
 	"goDockApp/model"
 	"goDockApp/util"
@@ -8,50 +9,70 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/asaskevich/govalidator"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
-	"golang.org/x/crypto/bcrypt"
+	"github.com/sirupsen/logrus"
 )
+
+var logger = logrus.WithField("package", "handler")
 
 const (
 	// Key (Should come from somewhere else).
 	Key = "secret"
 )
 
+type H map[string]interface{}
+
+func inValidCredentials(email, password string) bool {
+	return govalidator.IsEmail(email) && len(password) > 7
+}
+
+func isValidTreeData(data string) bool {
+	isValid := regexp.MustCompile(`^[0-9#,]+$`).MatchString
+	return isValid(data)
+}
+
+func errorMsg(err string) map[string]interface{} {
+	return map[string]interface{}{"error": err}
+}
+
+// TreeHandler returns max sum of the longest path
+// returns error when input tree is not valid
 func TreeHandler(c echo.Context) error {
 	tree := &model.TreeSerialized{}
 	if err := c.Bind(tree); err != nil {
-		return err
+		return c.JSON(http.StatusBadRequest, errorMsg(err.Error()))
 	}
-	isValid := regexp.MustCompile(`^[0-9#,]+$`).MatchString
-	if !isValid(tree.Data) {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid Tree!"})
+	if !isValidTreeData(tree.Data) {
+		return c.JSON(http.StatusBadRequest, errorMsg("Invalid Tree!"))
 	}
-	tree.Max = util.GetMaxSum(tree.Data)
+	var err error
+	if tree.Max, err = core.GetMaxSum(tree.Data); err != nil {
+		return c.JSON(http.StatusBadRequest, errorMsg(err.Error()))
+	}
 	return c.JSON(http.StatusOK, tree)
 }
 
+// LoginHandler handles user's login
+// returns error when user does not exist or login info is invalid
 func LoginHandler(c echo.Context) error {
-	// return c.Render(http.StatusOK, "something.html", map[string]interface{}{
-	// 	"name": "Dolly!",
-	// })
+	resp := &model.LoginResponse{}
 	user := &model.User{}
 	if err := c.Bind(user); err != nil {
-		return err
+		logrus.Error(err)
+		resp.Error = err.Error()
+		return c.Render(http.StatusOK, "login.html", resp)
 	}
+	user.Prepare()
+	resp.Email = user.Email
+	resp.Password = user.Password
 
 	// Validate
-	if user.Email == "" || user.Password == "" {
-		return c.JSON(http.StatusBadRequest, "invalid email or password")
-	}
-
-	var dbPassword string
-	err := database.DB.QueryRow("select password from users where email=$1", user.Email).Scan(&dbPassword)
-	if err != nil {
-		return c.JSON(http.StatusUnauthorized, "invalid email or password")
-	}
-	if err := bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(user.Password)); err != nil {
-		return c.JSON(http.StatusUnauthorized, "invalid email or password")
+	if !inValidCredentials(user.Email, user.Password) || !database.IsUserExists(user) {
+		resp.Error = util.InValidCredentialsMsg
+		logger.Errorf(resp.Error)
+		return c.Render(http.StatusOK, "login.html", resp)
 	}
 
 	// Create token
@@ -67,27 +88,33 @@ func LoginHandler(c echo.Context) error {
 	return c.Redirect(http.StatusSeeOther, "/index")
 }
 
+// SignUpHandler creates a new user when credentials are valid
+// returns error if error happens
 func SignUpHandler(c echo.Context) error {
-	// Bind
 	user := &model.User{}
+	resp := &model.LoginResponse{}
 	if err := c.Bind(user); err != nil {
-		return err
+		resp.Error = err.Error()
+		logger.Error(resp.Error)
+		return c.Render(http.StatusOK, "signup.html", resp)
 	}
+	user.Prepare()
+	resp.Email = user.Email
+	resp.Password = user.Password
 
 	// Validate
-	if user.Email == "" || user.Password == "" {
-		return c.JSON(http.StatusBadRequest, "invalid email or password")
-	}
-
-	// Encrypt
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), 12)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, "bad password")
+	if !inValidCredentials(user.Email, user.Password) {
+		resp.Error = util.InValidCredentialsMsg
+		logger.Error(resp.Error)
+		return c.Render(http.StatusOK, "signup.html", resp)
 	}
 
 	// Save user
-	var lastInsertId int
-	database.DB.QueryRow("INSERT INTO users(email,password) VALUES($1,$2) returning id;",
-		user.Email, hashedPassword).Scan(&lastInsertId)
+	if err := database.CreateUser(user); err != nil {
+		resp.Error = err.Error()
+		logger.Error(resp.Error)
+		return c.Render(http.StatusOK, "signup.html", resp)
+	}
+
 	return c.Redirect(http.StatusSeeOther, "/index")
 }

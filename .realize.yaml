@@ -1,0 +1,15 @@
+schema:
+- name: goDockApp
+  path: .
+  commands:
+    run:
+      status: true
+  watcher:
+    paths:
+    - /
+    extensions:
+    - go
+    - html
+    ignored_paths:
+    - .git
+    - .idea

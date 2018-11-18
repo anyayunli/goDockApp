@@ -33,14 +33,19 @@
                     <div class="row">
                         <div class="input-field col s12">
                             <label for="email">Email address</label>
-                            <input type="email" placeholder=" " class="validate" name="email" id="email" />
+                            <input type="email" placeholder=" " class="validate" name="email" id="email" value="{{ .Email }}"/>
                         </div>
                         <div class="input-field col s12">
                             <label for="password">Password </label>
-                            <input type="password" placeholder=" " class="validate" name="password" id="password" />
+                            <input type="password" placeholder=" " class="validate" name="password" id="password" value="{{ .Password }}" minlength="8"/>
                         </div>
                     </div>
                 </div>
+                <center>
+                    {{ if .Error }}
+                    <span class="amber lighten-2">{{ .Error }}</span>
+                    {{ end }}
+                </center>
                 <div class="card-action right-align">
                     <input type="submit" class="btn green waves-effect waves-light" value="Sign Up">
                 </div>

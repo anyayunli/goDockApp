@@ -1,6 +1,8 @@
-package util
+package core
 
 import (
+	"errors"
+	"math"
 	"strconv"
 	"strings"
 
@@ -16,25 +18,31 @@ type TreeNode struct {
 }
 
 // preorder deserialize
-func deserialize(input *[]string) *TreeNode {
+func deserialize(input *[]string) (*TreeNode, error) {
 	if len(*input) == 0 {
-		return nil
+		return nil, nil
 	}
 	var cur = (*input)[0]
 	*input = (*input)[1:]
 	if cur == "#" {
-		return nil
+		return nil, nil
 	}
 
 	i, err := strconv.Atoi(cur)
 	if err != nil {
-		logger.Errorf("error parsing char: %s", cur)
-		return nil
+		return nil, err
+	}
+	if i < math.MinInt64 || i > math.MaxInt64 {
+		return nil, errors.New("Value overflow")
 	}
 	var node = TreeNode{val: i}
-	node.left = deserialize(input)
-	node.right = deserialize(input)
-	return &node
+	if node.left, err = deserialize(input); err != nil {
+		return nil, err
+	}
+	if node.right, err = deserialize(input); err != nil {
+		return nil, err
+	}
+	return &node, nil
 }
 
 func getLongestPaths(root *TreeNode, path []int, max *int, ans *[][]int) {
@@ -65,18 +73,21 @@ func getLongestPaths(root *TreeNode, path []int, max *int, ans *[][]int) {
 
 // GetMaxSum returns the sum of the longest path, and if there are multiple paths that have the
 // same longest length, return the largest sum among those sums
-func GetMaxSum(data string) int {
+func GetMaxSum(data string) (int64, error) {
 	data = strings.Replace(data, `\s+`, "", -1)
 	arr := strings.Split(data, ",")
-	logger.Infof("calculating maxsum for tree: %s", data)
 
-	root := deserialize(&arr)
+	logger.Infof("calculating maxsum for tree: %s", data)
+	root, err := deserialize(&arr)
+	if err != nil {
+		return 0, err
+	}
 	paths := &[][]int{}
 	max := 0
 	getLongestPaths(root, []int{}, &max, paths)
 	logger.Infof("longest paths: %v", paths)
 
-	maxsum := 0
+	maxsum := math.MinInt64
 	for _, path := range *paths {
 		sum := 0
 		for j := range path {
@@ -86,5 +97,8 @@ func GetMaxSum(data string) int {
 			maxsum = sum
 		}
 	}
-	return maxsum
+	if maxsum < math.MinInt64 || maxsum > math.MaxInt64 {
+		return 0, errors.New("Value overflow")
+	}
+	return int64(maxsum), nil
 }
