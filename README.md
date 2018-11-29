@@ -1,7 +1,13 @@
 goDockApp
 ------------
+A RESTful application boilerplate in Go (golang),  taking packages and tools of Go echo + Postgres + Materialize + Docker.
+
 ### Requirements
-goDockApp needs Go1.11.1 or newer to run.
+```
+Go1.11.1 or newer.
+
+PostgreSQL 9.6.3 or newer.
+```
 
 ### Installation
 ```
@@ -25,5 +31,3 @@ docker-compose up
 ### HTTP server address and port
 
 defaults to http://localhost:3344/
-
-You can run goDockApp listening on a different host and port():

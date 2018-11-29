@@ -1,6 +1,7 @@
 package main
 
 import (
+	"goDockApp/cusmiddleware"
 	"goDockApp/database"
 	"goDockApp/handler"
 	"goDockApp/util"
@@ -33,11 +34,11 @@ func (t *TemplateRenderer) Render(w io.Writer, name string, data interface{}, c 
 func main() {
 	// Postgres
 	dbType := "postgres"
-	dbHost := "127.0.0.1"
+	dbHost := "db"
 	dbPort := 5432
-	dbUser := "api_rw"
+	dbUser := "app"
 	dbName := "godockapp"
-	dbPassword := ""
+	dbPassword := "password"
 
 	logrus.SetFormatter(util.LogFormatter{})
 
@@ -65,17 +66,18 @@ func main() {
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
 	}))
 
-	// Routes
-	e.POST("/login", handler.LoginHandler)
-	e.POST("/signup", handler.SignUpHandler)
-	e.GET("/", handler.IndexHandler)
+	// Non-AuthGroup
+	notAuthGroup := e.Group("", cusmiddleware.NotValidateMiddleware)
+	notAuthGroup.GET("/signup", handler.RenderSignUpPageHandler)
+	notAuthGroup.POST("/signup", handler.SignUpHandler)
+	notAuthGroup.GET("/login", handler.RenderLoginPageHandler)
+	notAuthGroup.POST("/login", handler.LoginHandler)
 
-	// Templates
-	e.GET("/signup", handler.RenderSignUpPage)
-	e.GET("/login", handler.RenderLoginPage)
-
-	// API
-	e.POST("/api/v1/tree", handler.TreeHandler)
+	// AuthGroup
+	isAuthGroup := e.Group("", cusmiddleware.ValidateMiddleware)
+	isAuthGroup.GET("/", handler.RenderIndexPageHandler)
+	isAuthGroup.POST("/api/v1/tree", handler.TreeHandler)
+	isAuthGroup.POST("/logout", handler.LogOutHandler)
 
 	// Start server
 	e.Logger.Fatal(e.Start(serverPort))

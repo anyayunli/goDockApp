@@ -7,24 +7,21 @@ import (
 	"os"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
 	connString := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable password=%s",
-		"localhost", 5432, "api_rw", "godockapp", "")
+		"localhost", 5432, "app", "godockapp", "")
 	db, err := sql.Open("postgres", connString)
 	if err != nil {
-		logger.Panic(err)
+		logrus.Panic(err)
 	}
 	InitPgDb(db)
 	result := m.Run()
 	db.Exec("TRUNCATE users;")
 	os.Exit(result)
-}
-
-func cleanDB() {
-	DB.Exec("TRUNCATE users;")
 }
 
 func Test_CreateUser(t *testing.T) {

@@ -9,8 +9,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var logger = logrus.WithField("package", "util")
-
 type TreeNode struct {
 	val   int
 	left  *TreeNode
@@ -77,7 +75,7 @@ func GetMaxSum(data string) (int64, error) {
 	data = strings.Replace(data, `\s+`, "", -1)
 	arr := strings.Split(data, ",")
 
-	logger.Infof("calculating maxsum for tree: %s", data)
+	logrus.Infof("calculating maxsum for tree: %s", data)
 	root, err := deserialize(&arr)
 	if err != nil {
 		return 0, err
@@ -85,7 +83,7 @@ func GetMaxSum(data string) (int64, error) {
 	paths := &[][]int{}
 	max := 0
 	getLongestPaths(root, []int{}, &max, paths)
-	// logger.Infof("longest paths: %v", paths)
+	// logrus.Infof("longest paths: %v", paths)
 
 	maxsum := math.MinInt64
 	for _, path := range *paths {

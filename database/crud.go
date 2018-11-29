@@ -5,6 +5,7 @@ import (
 	"goDockApp/config"
 	"goDockApp/model"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -19,9 +20,10 @@ func CreateUser(user *model.User) error {
 
 	// Save
 	var lastInsertId int
-	DB.QueryRow("INSERT INTO users(email,password) VALUES($1,$2) returning id;",
+	rows := DB.QueryRow("INSERT INTO users(email,password) VALUES($1,$2) returning id;",
 		user.Email, hashedPassword).Scan(&lastInsertId)
 	if lastInsertId == 0 {
+		logrus.Error(rows)
 		return errors.New(config.AlreadyExistsMsg)
 	}
 	return nil

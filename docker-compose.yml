@@ -6,12 +6,14 @@ services:
   db:
     image: postgres
     restart: always
+    volumes:
+     - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
     environment:
+      POSTGRES_USER: app
       POSTGRES_PASSWORD: password
-      POSTGRES_USER: api_rw
       POSTGRES_DB: godockapp
 
-  adminer:
+  web-app:
     image: go-dock-app
     restart: always
     ports:

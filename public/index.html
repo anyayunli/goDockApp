@@ -23,13 +23,20 @@
             bottom: auto !important;
             left:auto !important;
         }
+        nav ul .btn-flat {
+            color: #fff;
+        }
     </style>
     <header>
         <nav>
             <div class="nav-wrapper">
                 <ul id="nav-mobile" class="right hide-on-med-and-down">
-                    <li>{{.email}}</li>
-                    <li><a href="#">Log out</a></li>
+                    <li>{{.Email}}</li>
+                    <form action="/logout" method="post">
+                        <input type="hidden" name="csrf" value="{{ .CSRF }}" />
+                        <button type="submit" class="btn-flat">Sign out</button>
+                    </form>
+                    </li>
                 </ul>
             </div>
         </nav>
@@ -82,13 +89,15 @@
         </div>
     </div>
     <script>
-        var getResult = function() {
-            var data = document.getElementById("data").value;
-            var body = {data: data};
-            fetch("/api/v1/tree", {
+    var getResult = function() {
+        var data = document.getElementById("data").value;
+        var body = {
+            data: data
+        };
+        fetch("/api/v1/tree", {
                 method: 'POST',
                 body: JSON.stringify(body),
-                headers:{
+                headers: {
                     'Content-Type': 'application/json'
                 }
             })
@@ -101,12 +110,16 @@
             .then(res => {
                 document.getElementById("maxsum").innerHTML = res.max;
             })
-           .catch(error => {
-                M.toast({html: error.error, displayLength: 600})
+            .catch(error => {
+                M.toast({
+                    html: error.error,
+                    displayLength: 600
+                })
                 document.getElementById("maxsum").innerHTML = ""
                 console.log(error);
             });
-        };
+    };
+
     </script>
 </body>
 

@@ -10,8 +10,6 @@ import (
 
 var DB *sql.DB
 
-var logger = logrus.WithField("package", "database")
-
 // InitPgDb initialize database instance
 func InitPgDb(db *sql.DB) {
 	DB = db
@@ -23,13 +21,19 @@ func GetDB(dbType, dbHost string, dbPort int, dbUser, dbName, dbPassword string)
 		dbHost, dbPort, dbUser, dbName, dbPassword)
 	db, err := sql.Open(dbType, connString)
 	if err != nil {
-		logger.WithFields(logrus.Fields{
+		logrus.WithFields(logrus.Fields{
 			"db_type": dbType,
 			"db_host": dbHost,
 			"db_port": dbPort,
 			"db_user": dbUser,
 			"db_name": dbName,
 		}).Fatal("Database connection failed : ", err)
+	}
+	err = db.Ping()
+	if err != nil {
+		logrus.Error(err.Error())
+	} else {
+		logrus.Info("SUCCESS")
 	}
 	return db
 }
